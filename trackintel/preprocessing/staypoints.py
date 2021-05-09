@@ -3,7 +3,7 @@ from math import radians
 import numpy as np
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
-
+import geopandas as gpd
 from trackintel.geogr.distances import meters_to_decimal_degrees
 
 
@@ -59,6 +59,8 @@ def generate_locations(
 
     # initialize the return GeoDataFrames
     ret_stps = staypoints.copy()
+    # ret_stps.geometry[:,0] = ret_stps.geometry[:,0].astype(float)
+    # ret_stps.geometry[:,1] = ret_stps.geometry[:,1].astype(float)
 
     if method == "dbscan":
 
@@ -74,25 +76,24 @@ def generate_locations(
         if agg_level == "user":
             location_id_counter = 0
             # TODO: change into groupby
-            for user_id_this in ret_stps["user_id"].unique():
-                # Slice staypoints array by user. This is not a copy!
-                user_staypoints = ret_stps[ret_stps["user_id"] == user_id_this]
 
-                if distance_metric == "haversine":
-                    # the input is converted to list of (lat, lon) tuples in radians unit
-                    p = np.array([[radians(g.y), radians(g.x)] for g in user_staypoints.geometry])
-                else:
-                    p = np.array([[g.x, g.y] for g in user_staypoints.geometry])
-                labels = db.fit_predict(p)
+            # for user_id_this in ret_stps["user_id"].unique():
+            #     # Slice staypoints array by user. This is not a copy!
+            #     user_staypoints = ret_stps[ret_stps["user_id"] == user_id_this]
 
-                # enforce unique lables across all users without changing noise labels
-                max_label = np.max(labels)
-                labels[labels != -1] = labels[labels != -1] + location_id_counter
-                if max_label > -1:
-                    location_id_counter = location_id_counter + max_label + 1
+            grp = ret_stps.groupby("user_id")
+            # print (grp.head())
 
-                # add staypoint - location matching to original staypoints
-                ret_stps.loc[user_staypoints.index, "location_id"] = labels
+            # print("\n\n\n\nBefore function shape", ret_stps.shape)
+            # ret_stps['geometry'] = ret_stps["geometry"]
+            ret_stps = grp.apply(helper_function_for_group_by, distance_metric, db, location_id_counter)
+
+            # ret_stps.drop('geometry')
+            # print("\n\n\nAfter the function: ", ret_stps.columns)
+            # ret_stps["geometry"] = ret_stps.geom
+            # ret_stps["geometry"] = ret_stps["geometry"]
+            # print (ret_stps)
+            # print ("Object type")
         else:
             if distance_metric == "haversine":
                 # the input is converted to list of (lat, lon) tuples in radians unit
@@ -103,15 +104,26 @@ def generate_locations(
 
             ret_stps["location_id"] = labels
 
+        print(ret_stps.columns)
+        # ret_stps["geometry"] = ret_stps["geometry"]
+        # ret_stps["geometry"] = ret_stps["geometry"]
+        print (ret_stps.columns)
+        # time.sleep(200)
         ### create locations as grouped staypoints
+
+        # time.sleep(100)
+        # ret_stps["geometry"] = ret_stps["geometry"]
         temp_sp = ret_stps[["user_id", "location_id", ret_stps.geometry.name]]
+        # temp_sp["geometry"] = temp_sp["geometry"]
+        print ("temp_sp: ", temp_sp.columns)
+        # time.sleep(100)
         if agg_level == "user":
             # directly dissolve by 'user_id' and 'location_id'
             ret_loc = temp_sp.dissolve(by=["user_id", "location_id"], as_index=False)
         else:
             ## generate user-location pairs with same geometries across users
             # get user-location pairs
-            ret_loc = temp_sp.dissolve(by=["user_id", "location_id"], as_index=False).drop(columns={"geom"})
+            ret_loc = temp_sp.dissolve(by=["user_id", "location_id"], as_index=False).drop(columns={"geometry"})
             # get location geometries
             geom_df = temp_sp.dissolve(by=["location_id"], as_index=False).drop(columns={"user_id"})
             # merge pairs with location geometries
@@ -123,6 +135,11 @@ def generate_locations(
         ret_loc["center"] = None  # initialize
         # locations with only one staypoints is of type "Point"
         point_idx = ret_loc.geom_type == "Point"
+        # del ret_loc['geometry']
+        print ("ret_loc ", ret_loc.columns)
+        ret_loc["geom"] = ret_loc["geometry"]
+        # time.sleep(200)
+
         if not ret_loc.loc[point_idx].empty:
             ret_loc.loc[point_idx, "center"] = ret_loc.loc[point_idx, "geom"]
         # locations with multiple staypoints is of type "MultiPoint"
@@ -169,3 +186,34 @@ def generate_locations(
     ret_loc["user_id"] = ret_loc["user_id"].astype(ret_stps["user_id"].dtype)
 
     return ret_stps, ret_loc
+
+
+
+
+import time
+import pandas as pd
+def helper_function_for_group_by( ret_stps, distance_metric, db, location_id_counter):
+    # print ("Inside the function: \n\n\n")
+    ret_stps["geometry"] = ret_stps["geom"]
+    # print(ret_stps.head(),'\n', ret_stps.columns)
+    user_staypoints = ret_stps
+
+    if distance_metric == "haversine":
+        # the input is converted to list of (lat, lon) tuples in radians unit
+        p = np.array([[radians(g.y), radians(g.x)] for g in user_staypoints.geometry])
+    else:
+        p = np.array([[g.x, g.y] for g in user_staypoints.geometry])
+    labels = db.fit_predict(p)
+
+    # enforce unique lables across all users without changing noise labels
+    max_label = np.max(labels)
+    labels[labels != -1] = labels[labels != -1] + location_id_counter
+    if max_label > -1:
+        location_id_counter = location_id_counter + max_label + 1
+
+    # add staypoint - location matching to original staypoints
+    ret_stps.loc[user_staypoints.index, "location_id"] = labels
+    # ss = (item_.sepal_length);
+    # agg_.loc[item_.sepal_length.index,"new_val"] = np.mean(ss);
+    ret_stps['geom'] = ret_stps["geometry"]
+    return ret_stps
