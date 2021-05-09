@@ -1,7 +1,6 @@
 from math import radians
 
 import numpy as np
-import time
 from shapely.geometry import Point
 from sklearn.cluster import DBSCAN
 
@@ -72,25 +71,19 @@ def generate_locations(
         else:
             db = DBSCAN(eps=epsilon, min_samples=num_samples, algorithm="ball_tree", metric=distance_metric)
 
-        p = np.random.rand(1000000, 2)
-
         if agg_level == "user":
             location_id_counter = 0
             # TODO: change into groupby
-            startTime = time.time()
             for user_id_this in ret_stps["user_id"].unique():
                 # Slice staypoints array by user. This is not a copy!
                 user_staypoints = ret_stps[ret_stps["user_id"] == user_id_this]
 
                 if distance_metric == "haversine":
                     # the input is converted to list of (lat, lon) tuples in radians unit
-                    p[: user_staypoints.geometry.shape[0], 0] = np.radians(user_staypoints.geometry.y)
-                    p[: user_staypoints.geometry.shape[0], 1] = np.radians(user_staypoints.geometry.x)
+                    p = np.array([[radians(g.y), radians(g.x)] for g in user_staypoints.geometry])
                 else:
-                    p[: user_staypoints.geometry.shape[0], 0] = user_staypoints.geometry.x
-                    p[: user_staypoints.geometry.shape[0], 1] = user_staypoints.geometry.y
-
-                labels = db.fit_predict(p[: user_staypoints.shape[0], :])
+                    p = np.array([[g.x, g.y] for g in user_staypoints.geometry])
+                labels = db.fit_predict(p)
 
                 # enforce unique lables across all users without changing noise labels
                 max_label = np.max(labels)
@@ -100,18 +93,13 @@ def generate_locations(
 
                 # add staypoint - location matching to original staypoints
                 ret_stps.loc[user_staypoints.index, "location_id"] = labels
-            print(time.time() - startTime, " seconds for the entire loop")
         else:
             if distance_metric == "haversine":
                 # the input is converted to list of (lat, lon) tuples in radians unit
-                p[: ret_stps.geometry.shape[0], 0] = np.radians(ret_stps.geometry.y)
-                p[: ret_stps.geometry.shape[0], 1] = np.radians(ret_stps.geometry.x)
-
+                p = np.array([[radians(g.y), radians(g.x)] for g in ret_stps.geometry])
             else:
-                p[: ret_stps.geometry.shape[0], 0] = ret_stps.geometry.x
-                p[: ret_stps.geometry.shape[0], 1] = ret_stps.geometry.y
-
-            labels = db.fit_predict(p[: ret_stps.shape[0], :])
+                p = np.array([[g.x, g.y] for g in ret_stps.geometry])
+            labels = db.fit_predict(p)
 
             ret_stps["location_id"] = labels
 
