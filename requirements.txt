@@ -10,3 +10,6 @@ osmnx
 psycopg2
 tqdm
 similaritymeasures
+asv
+pytest
+virtualenv
