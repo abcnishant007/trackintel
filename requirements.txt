@@ -11,5 +11,6 @@ psycopg2
 tqdm
 similaritymeasures
 asv
-pytest
+pytest==3.10.1
 virtualenv
+trackintel
