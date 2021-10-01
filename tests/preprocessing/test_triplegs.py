@@ -17,7 +17,7 @@ from trackintel.preprocessing.triplegs import generate_trips
 @pytest.fixture
 def example_triplegs():
     """Generate input data for trip generation from geolife positionfixes"""
-    pfs, _ = ti.io.dataset_reader.read_geolife(os.path.join("tests", "data", "geolife_long"))
+    pfs, _ = ti.io.dataset_reader.read_geolife("/Users/nishant/Documents/GitHub/trackintel/tests/data/geolife_long")
     pfs, stps = pfs.as_positionfixes.generate_staypoints(
         method="sliding", dist_threshold=25, time_threshold=5, gap_threshold=1e6
     )
@@ -30,7 +30,7 @@ def example_triplegs():
 def example_triplegs_higher_gap_threshold():
     """Generate input data for trip generation, but with a higher gap threshold in stp generation"""
     # create trips from geolife (based on positionfixes)
-    pfs, _ = ti.io.dataset_reader.read_geolife(os.path.join("tests", "data", "geolife_long"))
+    pfs, _ = ti.io.dataset_reader.read_geolife("/Users/nishant/Documents/GitHub/trackintel/tests/data/geolife_long")
     pfs, stps = pfs.as_positionfixes.generate_staypoints(
         method="sliding", dist_threshold=25, time_threshold=5, gap_threshold=1e6
     )
@@ -38,10 +38,13 @@ def example_triplegs_higher_gap_threshold():
     pfs, tpls = pfs.as_positionfixes.generate_triplegs(stps)
     return stps, tpls
 
+example_triplegs = example_triplegs()
+example_triplegs_higher_gap_threshold = example_triplegs_higher_gap_threshold()
+
 
 class TestSmoothen_triplegs:
-    def test_smoothen_triplegs(self):
-        tpls_file = os.path.join("tests", "data", "triplegs_with_too_many_points_test.csv")
+    def time_test_smoothen_triplegs(self):
+        tpls_file = "/Users/nishant/Documents/GitHub/trackintel/tests/data/tests/data/triplegs_with_too_many_points_test.csv"
         tpls = ti.read_triplegs_csv(tpls_file, sep=";", index_col=None)
         tpls_smoothed = ti.preprocessing.triplegs.smoothen_triplegs(tpls, tolerance=0.0001)
         line1 = tpls.iloc[0].geom
@@ -60,7 +63,7 @@ class TestSmoothen_triplegs:
 class TestGenerate_trips:
     """Tests for generate_trips() method."""
 
-    def test_duplicate_columns(self, example_triplegs):
+    def test_duplicate_columns(self):
         """Test if running the function twice, the generated column does not yield exception in join statement"""
         # create trips from geolife (based on positionfixes)
         stps, tpls = example_triplegs
@@ -73,10 +76,10 @@ class TestGenerate_trips:
         assert set(tpls_run_1.columns) == set(tpls_run_2.columns)
         assert set(stps_run_1.columns) == set(stps_run_2.columns)
 
-    def test_generate_trips(self, example_triplegs_higher_gap_threshold):
+    def time_test_generate_trips(self):
         """Test if we can generate the example trips based on example data."""
         # load pregenerated trips
-        trips_loaded = ti.read_trips_csv(os.path.join("tests", "data", "geolife_long", "trips.csv"), index_col="id")
+        trips_loaded = ti.read_trips_csv("/Users/nishant/Documents/GitHub/trackintel/tests/data/geolife_long/trips.csv", index_col="id")
 
         # create trips from geolife (based on positionfixes) - with gap_threshold 1e6
         stps, tpls = example_triplegs_higher_gap_threshold
@@ -104,7 +107,7 @@ class TestGenerate_trips:
         # test if generated trips are equal
         assert_frame_equal(trips_wo_geom, trips)
 
-    def test_trip_coordinates(self, example_triplegs_higher_gap_threshold):
+    def time_test_trip_coordinates(self):
         """Test if coordinates of start and destination are correct"""
         # create trips from geolife (based on positionfixes) - with gap_threshold 1e6
         stps, tpls = example_triplegs_higher_gap_threshold
@@ -157,7 +160,7 @@ class TestGenerate_trips:
         assert_geodataframe_equal(stps_expl, stps_acc)
         assert_geodataframe_equal(tpls_expl, tpls_acc)
 
-    def test_accessor_arguments(self, example_triplegs):
+    def time_test_accessor_arguments(self):
         """Test if the accessor is robust to different ways to receive arguments"""
 
         # get geolife test data (based on positionfixes)
