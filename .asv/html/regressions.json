@@ -1,1 +1,1 @@
-{"regressions": []}
+{"regressions": [["preprocessing.test_triplegs.TestGenerate_trips.time_test_trip_coordinates", "graphs/arch-x86_64/branch-master/cpu-2 GHz Quad-Core Intel Core i5/machine-nishant/num_cpu-4/os-Macintosh OS-X 11.3/pytest-6.1.1/python-3.8/ram-8/six-null/preprocessing.test_triplegs.TestGenerate_trips.time_test_trip_coordinates.json", {}, null, 0.04362991549999995, 0.03905203099999999, [[null, 402, 0.03905203099999999, 0.04334620500000019]]]]}
